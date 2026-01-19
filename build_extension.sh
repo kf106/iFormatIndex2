@@ -50,12 +50,17 @@ echo "$BUILD_NUM" > "$BUILD_FILE"
 VERSION="${BASE_VERSION}.${BUILD_NUM}"
 
 # Create required dirs in staging
-mkdir -p "$STAGE_DIR/META-INF" "$STAGE_DIR/$LIB_NAME"
+mkdir -p "$STAGE_DIR/META-INF" "$STAGE_DIR/$LIB_NAME" "$STAGE_DIR/description"
 
 # Copy core files
 cp -f "description.xml" "$STAGE_DIR/description.xml"
 cp -f "Addons.xcu" "$STAGE_DIR/Addons.xcu"
 cp -f "META-INF/manifest.xml" "$STAGE_DIR/META-INF/manifest.xml"
+
+# Copy description directory if it exists
+if [[ -d "description" ]]; then
+  cp -rf "description/"* "$STAGE_DIR/description/"
+fi
 
 # Copy the Basic library folder as a top-level directory
 cp -f "${LIB_NAME}/script.xlb" "$STAGE_DIR/$LIB_NAME/script.xlb"

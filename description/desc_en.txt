@@ -1,0 +1,1 @@
+Formats index entries in LibreOffice Writer documents. Automatically applies italic formatting to 'see' and 'see also' entries, removes unnecessary target page numbers, organizes 'see also' entries at the bottom of Index 2 blocks, and keeps Index 1 entries together with their following Index 2 entries across page breaks.
