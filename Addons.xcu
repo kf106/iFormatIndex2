@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xml="http://www.w3.org/XML/1998/namespace" oor:name="Addons" oor:package="org.openoffice.Office">
+    <node oor:name="AddonUI">
+        <node oor:name="OfficeMenuBarMerging">
+            <node oor:name="com.chainfrog.formatindex2" oor:op="replace">
+                <node oor:name="M1" oor:op="replace">
+                    <prop oor:name="MergePoint" oor:type="xs:string">
+                        <value>.uno:ToolsMenu\.uno:OptionsTreeDialog</value>
+                    </prop>
+                    <prop oor:name="MergeCommand" oor:type="xs:string">
+                        <value>AddAfter</value>
+                    </prop>
+                    <prop oor:name="MergeFallback" oor:type="xs:string">
+                        <value>Ignore</value>
+                    </prop>
+                    <prop oor:name="MergeContext" oor:type="xs:string">
+                        <value>com.sun.star.text.TextDocument</value>
+                    </prop>
+                    <node oor:name="MenuItems">
+                        <node oor:name="01_sep" oor:op="replace">
+                            <prop oor:name="URL" oor:type="xs:string">
+                                <value>private:separator</value>
+                            </prop>
+                        </node>
+                        <node oor:name="02_item" oor:op="replace">
+                            <prop oor:name="Title" oor:type="xs:string">
+                                <value xml:lang="en-US">Index Formatter</value>
+                            </prop>
+                            <prop oor:name="URL" oor:type="xs:string">
+                                <value>vnd.sun.star.script:FormatIndex2.FormatIndex2.FormatIndex2Paragraphs?language=Basic&amp;location=application</value>
+                            </prop>
+                        </node>
+                    </node>
+                </node>
+            </node>
+        </node>
+    </node>
+</oor:component-data>

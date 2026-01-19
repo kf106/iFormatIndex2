@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<description xmlns="http://openoffice.org/extensions/description/2006" 
+             xmlns:xlink="http://www.w3.org/1999/xlink">
+    <identifier value="com.chainfrog.formatindex2"/>
+    <version value="0.2.1"/>
+    <platform value="all"/>
+    <display-name>
+        <name lang="en">Index Formatter</name>
+    </display-name>
+    <publisher>
+        <name xlink:href="https://blockchaingandalf.com" lang="en">Keir Finlow-Bates</name>
+    </publisher>
+    <extension-description>
+        <desc lang="en">Formats index entries in LibreOffice Writer documents. Automatically applies italic formatting to 'see' and 'see also' entries, removes unnecessary target page numbers, organizes 'see also' entries at the bottom of Index 2 blocks, and keeps Index 1 entries together with their following Index 2 entries across page breaks.</desc>
+    </extension-description>
+</description>

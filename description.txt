@@ -1,0 +1,16 @@
+Index Formatter
+
+This extension provides a macro to format index entries in LibreOffice Writer documents.
+
+Features:
+- Formats Index 1 and Index 2 paragraphs
+- Applies italic formatting to "see" and "see also" entries
+- Removes target page numbers from index entries that do not need them
+- Bubbles "see also" entries to the bottom of Index 2 blocks
+
+Usage:
+After installation, the macro "FormatIndex2Paragraphs" will be available in:
+Tools → Macros → Run Macro → My Macros → format_index2 → FormatIndex2Paragraphs
+
+You can also assign it to a keyboard shortcut or toolbar button via:
+Tools → Customize

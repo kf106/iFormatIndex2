@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="FormatIndex2" script:language="StarBasic" script:ModuleType="Normal">
+<![CDATA[
+REM  *****  BASIC  *****
+
+' Helper function to create a text document with error for easy copying
+Sub LogError(sError As String)
+    Dim oDoc As Object
+    Dim oText As Object
+    Dim oCursor As Object
+    Dim sTimestamp As String
+    
+    ' Create timestamp
+    sTimestamp = Format(Now, "YYYY-MM-DD HH:MM:SS")
+    
+    ' Create a new text document
+    oDoc = StarDesktop.loadComponentFromURL("private:factory/swriter", "_blank", 0, Array())
+    oText = oDoc.getText()
+    oCursor = oText.createTextCursor()
+    
+    ' Write error message
+    oText.insertString(oCursor, "LibreOffice Macro Error Log" & Chr(10) & Chr(10), False)
+    oText.insertString(oCursor, "Timestamp: " & sTimestamp & Chr(10), False)
+    oText.insertString(oCursor, "Error: " & sError & Chr(10) & Chr(10), False)
+    oText.insertString(oCursor, "You can now copy this error message from this document." & Chr(10), False)
+    
+    ' Make document visible
+    oDoc.getCurrentController().getFrame().getContainerWindow().setVisible(True)
+End Sub
+
+' Helper function to extract page number from end of text (tab + number)
+Function ExtractPageNumber(sText As String) As Integer
+    Dim iLastTabPos As Integer
+    Dim iTabPos As Integer
+    Dim sPageNum As String
+    
+    ' Find the last tab
+    iLastTabPos = 0
+    iTabPos = InStr(sText, Chr(9))
+    Do While iTabPos > 0
+        iLastTabPos = iTabPos
+        iTabPos = InStr(iLastTabPos + 1, sText, Chr(9))
+    Loop
+    
+    ' If we found a tab, extract the number after it
+    If iLastTabPos > 0 And iLastTabPos < Len(sText) Then
+        sPageNum = Trim(Mid(sText, iLastTabPos + 1))
+        ' Check if it's a valid number
+        If IsNumeric(sPageNum) Then
+            ExtractPageNumber = CInt(sPageNum)
+        Else
+            ExtractPageNumber = 0
+        End If
+    Else
+        ExtractPageNumber = 0
+    End If
+End Function
+
+Function GetParagraphPage(oDoc As Object, oParaCursor As Object) As Long
+    ' Returns the page number of the paragraph where oParaCursor is located
+    Dim oViewCursor As Object
+    
+    On Error GoTo GetParagraphPageError
+    
+    oViewCursor = oDoc.getCurrentController().getViewCursor()
+    oViewCursor.gotoRange(oParaCursor, False)
+    GetParagraphPage = oViewCursor.Page
+    Exit Function
+    
+GetParagraphPageError:
+    GetParagraphPage = 0
+End Function
+
+Sub FormatIndex2Paragraphs
+    Dim oDoc As Object
+    Dim oText As Object
+    Dim oCursor As Object
+    Dim sText As String
+    Dim sLowerText As String
+    Dim iTabPos As Integer
+    Dim iLastTabPos As Integer
+    Dim sNewText As String
+    Dim bContinue As Boolean
+    Dim iIndexStartPage As Integer
+    Dim iTargetPage As Integer
+    Dim iFoundIndexStart As Boolean
+    Dim iEndPageNum As Integer
+    Dim sParaStyle As String
+    Dim iSeeLength As Integer
+    
+    On Error GoTo ErrorHandler
+    
+    ' Get the current document
+    oDoc = ThisComponent
+    If oDoc Is Nothing Then
+        MsgBox "Error: No document found", 0, "Error"
+        Exit Sub
+    End If
+    
+    oText = oDoc.Text
+    If oText Is Nothing Then
+        MsgBox "Error: Could not access document text", 0, "Error"
+        Exit Sub
+    End If
+    
+    ' First pass: Find the first Index 1 or Index 2 paragraph to get the index start page
+    oCursor = oText.createTextCursor()
+    oCursor.gotoStart(False)
+    iFoundIndexStart = False
+    iIndexStartPage = 0
+    
+    Do While Not iFoundIndexStart
+        oCursor.gotoStartOfParagraph(False)
+        oCursor.gotoEndOfParagraph(True)
+        
+        sParaStyle = oCursor.ParaStyleName
+        
+        If sParaStyle = "Index 1" Or sParaStyle = "Index 2" Then
+            ' Found first index paragraph - get the page number from the entry text itself
+            sText = oCursor.String
+            iIndexStartPage = ExtractPageNumber(sText)
+            If iIndexStartPage > 0 Then
+                ' Found a page number in the entry - use it as target
+                iTargetPage = iIndexStartPage
+                iFoundIndexStart = True
+            End If
+        End If
+        
+        If Not oCursor.gotoNextParagraph(False) Then
+            Exit Do
+        End If
+    Loop
+    
+    ' If we didn't find an index start with a page number, set target to 0 (won't match anything)
+    If Not iFoundIndexStart Then
+        iTargetPage = 0
+    End If
+    
+    ' Note: iTargetPage is now the page number shown in the index entries (not the physical page)
+    
+    ' Second pass: Process all paragraphs
+    oCursor = oText.createTextCursor()
+    oCursor.gotoStart(False)
+    
+    ' Iterate through all paragraphs
+    bContinue = True
+    Do While bContinue
+        ' Move to start of current paragraph
+        oCursor.gotoStartOfParagraph(False)
+        oCursor.gotoEndOfParagraph(True)
+        
+        ' Check paragraph style
+        sParaStyle = oCursor.ParaStyleName
+        
+        ' Check if paragraph is of type "Index 1"
+        If sParaStyle = "Index 1" Then
+            sText = oCursor.String
+            ' Check if paragraph ends with tab + target page number
+            iEndPageNum = ExtractPageNumber(sText)
+            If iEndPageNum = iTargetPage And iTargetPage > 0 Then
+                ' Ends with tab + target page number - delete tab and page number
+                iLastTabPos = 0
+                iTabPos = InStr(sText, Chr(9))
+                Do While iTabPos > 0
+                    iLastTabPos = iTabPos
+                    iTabPos = InStr(iLastTabPos + 1, sText, Chr(9))
+                Loop
+                If iLastTabPos > 0 Then
+                    oCursor.gotoStartOfParagraph(False)
+                    oCursor.gotoEndOfParagraph(False)
+                    oCursor.goLeft(Len(sText) - iLastTabPos + 1, True)
+                    oCursor.String = ""
+                End If
+            ' Check if paragraph ends with a tab and no page number
+            ElseIf Right(sText, 1) = Chr(9) Then
+                ' Ends with tab, no page number - delete the tab
+                oCursor.gotoStartOfParagraph(False)
+                oCursor.gotoEndOfParagraph(False)
+                ' Select the last character (the tab)
+                oCursor.goLeft(1, True)
+                ' Delete the tab
+                oCursor.String = ""
+            End If
+        ' Check if paragraph is of type "Index 2"
+        ElseIf sParaStyle = "Index 2" Then
+            sText = oCursor.String
+            sLowerText = LCase(sText)
+            
+            ' First check if it ends with tab + target page number and delete it
+            iEndPageNum = ExtractPageNumber(sText)
+            If iEndPageNum = iTargetPage And iTargetPage > 0 Then
+                ' Ends with tab + target page number - delete tab and page number
+                iLastTabPos = 0
+                iTabPos = InStr(sText, Chr(9))
+                Do While iTabPos > 0
+                    iLastTabPos = iTabPos
+                    iTabPos = InStr(iLastTabPos + 1, sText, Chr(9))
+                Loop
+                If iLastTabPos > 0 Then
+                    oCursor.gotoStartOfParagraph(False)
+                    oCursor.gotoEndOfParagraph(False)
+                    oCursor.goLeft(Len(sText) - iLastTabPos + 1, True)
+                    oCursor.String = ""
+                    ' Get updated text after deletion - recreate cursor to get fresh text
+                    oCursor.gotoStartOfParagraph(False)
+                    oCursor.gotoEndOfParagraph(True)
+                    sText = oCursor.String
+                    sLowerText = LCase(sText)
+                End If
+            End If
+            
+            ' Check if paragraph starts with "see" or "see also" (case-insensitive)
+            ' This check happens regardless of whether we deleted the target page number
+            If Left(sLowerText, 9) = "see also " Then
+                iSeeLength = 9  ' "see also " is 9 characters
+            ElseIf Left(sLowerText, 4) = "see " Then
+                iSeeLength = 4  ' "see " is 4 characters
+            ElseIf Trim(sLowerText) = "see also" Then
+                iSeeLength = 9  ' "see also" is 9 characters (no trailing space in exact match)
+            ElseIf Trim(sLowerText) = "see" Then
+                iSeeLength = 3  ' "see" is 3 characters
+            Else
+                iSeeLength = 0
+            End If
+            
+            If iSeeLength > 0 Then
+                ' Find the last tab position (near the end) for removing tab and page number
+                iLastTabPos = 0
+                iTabPos = InStr(sText, Chr(9))
+                Do While iTabPos > 0
+                    iLastTabPos = iTabPos
+                    iTabPos = InStr(iLastTabPos + 1, sText, Chr(9))
+                Loop
+                
+                ' Collapse cursor to end, then delete backwards to remove tab and page number
+                If iLastTabPos > 0 Then
+                    oCursor.gotoStartOfParagraph(False)
+                    oCursor.gotoEndOfParagraph(False)
+                    ' Move to the last tab position
+                    oCursor.goLeft(Len(sText) - iLastTabPos + 1, True)
+                    ' Delete the selected text (tab and page number)
+                    oCursor.String = ""
+                End If
+                
+                ' Apply italic direct formatting only to "see" or "see also"
+                oCursor.gotoStartOfParagraph(False)
+                ' Select only the "see" or "see also" portion
+                oCursor.goRight(iSeeLength, True)
+                oCursor.CharPosture = com.sun.star.awt.FontSlant.ITALIC
+            End If
+        End If
+        
+        ' Move to next paragraph
+        oCursor.gotoEndOfParagraph(False)
+        If Not oCursor.gotoNextParagraph(False) Then
+            bContinue = False
+        End If
+    Loop
+    
+    ' Third pass: Bubble "see also" Index 2 paragraphs to the bottom of Index 2 blocks
+    ' Loop through all paragraphs and swap "see also" with following Index 2 paragraphs
+    Dim bSwapped As Boolean
+    bSwapped = True
+    
+    ' Keep looping until no more swaps are needed
+    Do While bSwapped
+        bSwapped = False
+        oCursor = oText.createTextCursor()
+        oCursor.gotoStart(False)
+        bContinue = True
+        
+        Do While bContinue
+            oCursor.gotoStartOfParagraph(False)
+            oCursor.gotoEndOfParagraph(True)
+            
+            sParaStyle = oCursor.ParaStyleName
+            
+            ' Check if this is an Index 2 paragraph starting with "see also"
+            If sParaStyle = "Index 2" Then
+                sText = oCursor.String
+                sLowerText = LCase(sText)
+                
+                ' Check if it starts with "see also"
+                If Left(sLowerText, 9) = "see also " Or Trim(sLowerText) = "see also" Then
+                    ' Found a "see also" Index 2 - check the next paragraph
+                    Dim oNextCursor As Object
+                    Dim sNextParaStyle As String
+                    Dim sNextText As String
+                    Dim sPara1Text As String
+                    Dim sPara2Text As String
+                    
+                    ' Store current paragraph text
+                    sPara1Text = sText
+                    
+                    ' Move to next paragraph
+                    oNextCursor = oText.createTextCursorByRange(oCursor)
+                    oNextCursor.gotoEndOfParagraph(False)
+                    If oNextCursor.goRight(1, False) Then
+                        ' Check if we can move to next paragraph
+                        oNextCursor.gotoStartOfParagraph(False)
+                        oNextCursor.gotoEndOfParagraph(True)
+                        sNextParaStyle = oNextCursor.ParaStyleName
+                        sNextText = oNextCursor.String
+                        
+                        ' If next paragraph is also Index 2, swap them
+                        If sNextParaStyle = "Index 2" Then
+                            sPara2Text = sNextText
+                            
+                            ' Swap: replace next paragraph with current
+                            oNextCursor.gotoStartOfParagraph(False)
+                            oNextCursor.gotoEndOfParagraph(True)
+                            oNextCursor.String = sPara1Text
+                            
+                            ' Replace current paragraph with next
+                            oCursor.gotoStartOfParagraph(False)
+                            oCursor.gotoEndOfParagraph(True)
+                            oCursor.String = sPara2Text
+                            
+                            ' Mark that we swapped, so we need another pass
+                            bSwapped = True
+                            
+                            ' Move cursor to the paragraph we just swapped to
+                            oCursor = oText.createTextCursorByRange(oNextCursor)
+                        End If
+                    End If
+                End If
+            End If
+            
+            ' Move to next paragraph
+            oCursor.gotoEndOfParagraph(False)
+            If Not oCursor.gotoNextParagraph(False) Then
+                bContinue = False
+            End If
+        Loop
+    Loop
+    
+    ' Final pass: Apply italic formatting to all Index 2 paragraphs starting with "see" or "see also"
+    oCursor = oText.createTextCursor()
+    oCursor.gotoStart(False)
+    bContinue = True
+    
+    Do While bContinue
+        oCursor.gotoStartOfParagraph(False)
+        oCursor.gotoEndOfParagraph(True)
+        
+        sParaStyle = oCursor.ParaStyleName
+        
+        ' Check if this is an Index 2 paragraph
+        If sParaStyle = "Index 2" Then
+            sText = oCursor.String
+            sLowerText = LCase(sText)
+            
+            ' Check if paragraph starts with "see" or "see also" and determine length
+            If Left(sLowerText, 9) = "see also " Then
+                iSeeLength = 9  ' "see also " is 9 characters
+            ElseIf Left(sLowerText, 4) = "see " Then
+                iSeeLength = 4  ' "see " is 4 characters
+            ElseIf Trim(sLowerText) = "see also" Then
+                iSeeLength = 9  ' "see also" is 9 characters (no trailing space in exact match)
+            ElseIf Trim(sLowerText) = "see" Then
+                iSeeLength = 3  ' "see" is 3 characters
+            Else
+                iSeeLength = 0
+            End If
+            
+            ' Apply italic formatting if it starts with "see" or "see also"
+            If iSeeLength > 0 Then
+                oCursor.gotoStartOfParagraph(False)
+                oCursor.goRight(iSeeLength, True)
+                oCursor.CharPosture = com.sun.star.awt.FontSlant.ITALIC
+            End If
+        End If
+        
+        ' Move to next paragraph
+        oCursor.gotoEndOfParagraph(False)
+        If Not oCursor.gotoNextParagraph(False) Then
+            bContinue = False
+        End If
+    Loop
+    
+    ' Fourth pass: keep Index 1 paragraphs with following Index 2 paragraphs across page breaks
+    ' If an Index 1 is the last paragraph on a page and the next page starts with Index 2,
+    ' insert a paragraph break before the Index 1 to push both onto the next page.
+    oCursor = oText.createTextCursor()
+    oCursor.gotoStart(False)
+    bContinue = True
+    
+    Do While bContinue
+        oCursor.gotoStartOfParagraph(False)
+        oCursor.gotoEndOfParagraph(True)
+        
+        sParaStyle = oCursor.ParaStyleName
+        
+        If sParaStyle = "Index 1" Then
+            Dim iPageCurrent As Long
+            Dim iPageNext As Long
+            
+            iPageCurrent = GetParagraphPage(oDoc, oCursor)
+            
+            ' Prepare cursor for next paragraph
+            oNextCursor = oText.createTextCursorByRange(oCursor)
+            oNextCursor.gotoEndOfParagraph(False)
+            
+            If oNextCursor.gotoNextParagraph(False) Then
+                oNextCursor.gotoStartOfParagraph(False)
+                oNextCursor.gotoEndOfParagraph(True)
+                sNextParaStyle = oNextCursor.ParaStyleName
+                iPageNext = GetParagraphPage(oDoc, oNextCursor)
+                
+                ' If the next paragraph is Index 2 and on a later page,
+                ' the Index 1 is currently the last on its page: keep them together.
+                If sNextParaStyle = "Index 2" And iPageNext > iPageCurrent And iPageCurrent > 0 Then
+                    Dim oInsertCursor As Object
+                    oInsertCursor = oText.createTextCursorByRange(oCursor.getStart())
+                    oText.insertControlCharacter(oInsertCursor, com.sun.star.text.ControlCharacter.PARAGRAPH_BREAK, False)
+                    
+                    ' After inserting a new paragraph above, move main cursor to the Index 1 paragraph
+                    ' (which is now the next paragraph) to avoid re-processing.
+                    oCursor.gotoStartOfParagraph(False)
+                    oCursor.gotoNextParagraph(False)
+                End If
+            End If
+        End If
+        
+        ' Move to next paragraph
+        oCursor.gotoEndOfParagraph(False)
+        If Not oCursor.gotoNextParagraph(False) Then
+            bContinue = False
+        End If
+    Loop
+    
+    MsgBox "Formatting complete!", 0, "Index 2 Formatting"
+    Exit Sub
+    
+ErrorHandler:
+    Dim sErrorMsg As String
+    sErrorMsg = "Error Number: " & Err & Chr(10) & "Error Description: " & Error(Err) & Chr(10) & "Line: " & Erl
+    LogError(sErrorMsg)
+    MsgBox "An error occurred. A new document has been opened with the error details that you can copy.", 0, "Macro Error"
+End Sub
+]]>
+</script:module>

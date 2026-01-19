@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest:manifest xmlns:manifest="http://openoffice.org/2001/manifest" manifest:version="1.2">
+    <manifest:file-entry manifest:full-path="FormatIndex2/" manifest:media-type="application/vnd.sun.star.basic-library"/>
+    <manifest:file-entry manifest:full-path="FormatIndex2/script.xlb" manifest:media-type="text/xml"/>
+    <manifest:file-entry manifest:full-path="FormatIndex2/FormatIndex2.xba" manifest:media-type="text/xml"/>
+    <manifest:file-entry manifest:full-path="FormatIndex2/dialog.xlb" manifest:media-type="text/xml"/>
+    <manifest:file-entry manifest:full-path="Addons.xcu" manifest:media-type="application/vnd.sun.star.configuration-data"/>
+    <manifest:file-entry manifest:full-path="description.xml" manifest:media-type="text/xml"/>
+</manifest:manifest>
